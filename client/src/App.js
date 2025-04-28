@@ -43,7 +43,6 @@ const detectMood = (text) => {
 };
 
 export default function App() {
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [theme, setTheme] = useState('Dream');
   const [music, setMusic] = useState('Ocean');
@@ -52,6 +51,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [userName, setUserName] = useState('You');
   const [companionName, setCompanionName] = useState('Luma');
+  const [messages, setMessages] = useState([{ from: companionName, text: "Hello! I'm here to support you. Before scheduling an appointment, may I ask you a few questions to better understand your situation?" }]);
   const [showBreathing, setShowBreathing] = useState(false);
   const [achievements, setAchievements] = useState([]);
   const [goals, setGoals] = useState([]);
