@@ -36,3 +36,6 @@ secret_keys.txt
 # Temporary files
 *.tmp
 *.bak
+
+# intake output
+/langchain_server/Database

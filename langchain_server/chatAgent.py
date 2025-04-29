@@ -2,6 +2,8 @@ import openai
 import json
 import os
 import time
+from rag_retriever import RAGRetriever
+import re
 
 CHAT_SYSTEM_PTOMPT = """
 You are a mental health intake assistant.
@@ -9,12 +11,12 @@ You always reply to user/patient gently and warmly.
 You must always reply with special tags to guide the system's action:
 - <START> if starting a new session
 - <CONSENT> if greeting and ask for consent of asking question and the chatting data privacy policy before intake form filling.
-- <FAQ> if user asks questions about services
+- <FAQ> if user asks any questions about services
 - <EMERGENCY> if user shows signs of crisis or severe emotional distress
 - If strating or continuing intake form:
     - Add <BEGIN> if to start the intake filling
     - Add <NEXT> if ready to move to the next section of the intake form
-    - Add <CONTINUE> if keep on the current section
+    - Add <CONTINUE> if keep on the current intake section
     - Add <FINISH> if all intake question completed
 - <END> if the the session is end
 Always embed these tags at in your response, only one tag in each reponse.
@@ -51,22 +53,32 @@ The JSON format should be:
 }
 """
 
+INTAKE_FORM =[
+    "<BEGIN> Let's start with section 1: Presenting Concerns.",
+    "<NEXT> Next is section 2: Mental Health Hisotry.",
+    "<NEXT> Section 3: Current Symptoms.",
+    "<NEXT> Section 4: Risk Assessment.",
+    "<NEXT> Section 5: Medical History.",
+    "<NEXT> Last, section 6: Appointment check."
+]
+
+REACT_SYSTEM_PROMPT = """
+You are a helpful assistant answering questions about the mental health center.
+Use the provided information to answer the user's question.
+If the question is not in the knowledge base, please reply special tag <NULL> and do not make up any information.
+If answer is found, reply with tag <ANSWER> with the answer.
+"""
+
 class MentalHealthChatAgent:
     def __init__(self):
+        self.retriever = RAGRetriever()
         self.messages = [
             {"role": "system", "content": CHAT_SYSTEM_PTOMPT},
             {"role": "assistant", "content": CHAT_INIT_MSG}
         ]
         self.intake_question_index = 0
         self.intake_form_data = {}
-        self.intake_section = [
-            "<BEGIN> Let's start with section 1: Presenting Concerns.",
-            "<NEXT> Next is section 2: Mental Health Hisotry.",
-            "<NEXT> Section 3: Current Symptoms.",
-            "<NEXT> Section 4: Risk Assessment.",
-            "<NEXT> Section 5: Medical History.",
-            "<NEXT> Last, section 6: Appointment check."
-        ]
+        self.intake_section = INTAKE_FORM
 
     def chat(self, messages = None)-> str:
         if not messages:
@@ -82,7 +94,9 @@ class MentalHealthChatAgent:
     def parse_reply(self, reply):
         if "<FAQ>" in reply:
             ## use RAG to regerate answer
-            self.handle_faq()
+            answer= self.handle_faq()
+            if answer:
+                reply= answer
         elif "<EMERGENCY>" in reply:
             # use RAG to generate emergency handling answer
             self.handle_emergency()
@@ -96,11 +110,32 @@ class MentalHealthChatAgent:
 
         return reply
 
-    def handle_faq(self):
-        print("[SYSTEM] FAQ detected. Retrieving answer...")
-        # TODO: Call your RAG retriever here
-        # could include contact, acaliable time table etc.
-        # thinking to copy content from school web: https://www.nus.edu.sg/hwb/ucs/
+    def handle_faq(self) -> str:
+        print("[SYSTEM] FAQ detected. Retrieving info from knowledge base...")
+        user_query = self.messages[-1]["content"]
+        retrieved = self.retriever.retrieve(user_query)
+        answer=""
+        if retrieved:
+            print("[SYSTEM] Retrieved information:", retrieved)
+            # Now re-ask LLM to generate an answer with the retrieved context
+            messages=[
+                {"role": "system", "content": REACT_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Here is the information {retrieved}"},
+                {"role": "user", "content": f"Here is the question:{user_query}"}
+            ]
+            answer = self.chat(messages)
+            if "<NULL>" in answer:
+                print("[SYSTEM] No relevant information found.")
+                answer=""
+            elif "<ANSWER>" in answer:
+                # remove answer tag                
+                answer = answer.replace("<ANSWER>", "").strip()
+            else:
+                print("[SYSTEM] Missing tag from answer generation.")
+                answer = ""
+
+        return answer
+
 
     def handle_emergency(self):
         print("[SYSTEM] Emergency detected! Providing crisis lifeline...")
@@ -153,10 +188,10 @@ class MentalHealthChatAgent:
         Save the generated form to a local file.
         """
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        if not os.path.exists("saved_forms"):
-            os.makedirs("saved_forms")
+        if not os.path.exists("Database/saved_forms"):
+            os.makedirs("Database/saved_forms")
 
-        filename = f"saved_forms/intake_form_{timestamp}.json"
+        filename = f"Database/saved_forms/intake_form_{timestamp}.json"
         try:
             parsed_json = json.loads(form_text)
             with open(filename, "w", encoding="utf-8") as f:
@@ -175,5 +210,6 @@ class MentalHealthChatAgent:
         print(f"[DEBUG] Assistant: {AI_reply}")
         reply=self.parse_reply(AI_reply)
         self.messages.append({"role": "assistant", "content": reply})
+        reply = re.sub(r'<[^>]+>', '', reply).strip()
         return reply
         
