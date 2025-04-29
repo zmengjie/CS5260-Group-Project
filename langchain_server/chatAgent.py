@@ -1,4 +1,7 @@
 import openai
+import json
+import os
+import time
 
 CHAT_SYSTEM_PTOMPT = """
 You are a mental health intake assistant.
@@ -8,21 +11,45 @@ You must always reply with special tags to guide the system's action:
 - <CONSENT> if greeting and ask for consent of asking question and the chatting data privacy policy before intake form filling.
 - <FAQ> if user asks questions about services
 - <EMERGENCY> if user shows signs of crisis or severe emotional distress
-- <INTAKE> if strating or continuing intake form:
+- If strating or continuing intake form:
     - Add <BEGIN> if to start the intake filling
     - Add <NEXT> if ready to move to the next section of the intake form
     - Add <CONTINUE> if keep on the current section
     - Add <FINISH> if all intake question completed
 - <END> if the the session is end
-Always embed these tags at in your response.
+Always embed these tags at in your response, only one tag in each reponse.
 The chatting session flow for making appointment with mental health counselling session is:
 - Normal case: Greet → Consent → Intake Form Questions → Confirm → Close → Done.
-- Ask each quseiton one by one in short sentance, keep each section short and concise for finishing the session in 10 mins.
+- Ask each quseiton one by one, keep you question simple. If needed, ask for follow up detail gently.
+- Before moving on to next intake section, ask patient if anything to add on.
 - If no consent, ask again or close the session.
-- If user asks questions: Reply with <FAQ> tag → Answer → Return to intake form.
+- If user asks any questions: Reply with <FAQ> tag → Answer → Return to intake form.
 - If emergency detected: Reply with <EMERGENCY> tag → Provide immediate crisis contact → End intake form politely → End the session.
+
+The intake form contain 6 sections to fill in, please ask question based on each section, always come with tags.
+<BEGIN> Presenting Concerns: Ask why the client is seeking counseling. Ask for the duration.
+<NEXT> Mental Health History: If applicable, ask about past services (type, duration, outcome).
+<NEXT> Current Symptoms: Ask relevant symptoms based on concerns (e.g., depression, anxiety, sleep).
+<NEXT> Risk Assessment: Ask about self-harm, suicide, harm to others, or family violence. Probe if yes.
+<NEXT> Medical History: Ask about current conditions and medications if any.
+<NEXT> Appointment Preferences: Check available times and any therapist preference.
 """
 CHAT_INIT_MSG="<START> Hello! I'm here to support you. Before scheduling an appointment, may I ask you a few questions to better understand your situation?"
+
+FORM_SYSTEM_PROMPT = """
+You are a professional mental health intake assistant. Your job is to read the chatting history between clinic and the user, and generate a JSON format intake form based on the conversation.
+Each section content should be clear and concise for later triage and counseling.
+The JSON format should be:
+{
+    "intake_form": {
+        "Presenting Concerns": "...",
+        "Mental Health History": "...",
+        "Current Symptoms": "...",
+        "Risk Assessment": "...",
+        "Medical History": "...",
+        "Appointment Preferences": "..."
+}
+"""
 
 class MentalHealthChatAgent:
     def __init__(self):
@@ -33,20 +60,20 @@ class MentalHealthChatAgent:
         self.intake_question_index = 0
         self.intake_form_data = {}
         self.intake_section = [
-            "<INTAKE><BEGIN> Section 1. General Information: Name and Contact.",
-            "<INTAKE><NEXT> Section 2. Main issue and past history.",
-            "<INTAKE><NEXT> Section 3. Symptom Check: Decreased need for sleep, Change in appetite, Anxiety attacks, etc.",
-            "<INTAKE><NEXT> Section 4. Risk Assessment: suicide risk, family violance, rist of harm to others.",
-            "<INTAKE><NEXT> Section 5. Medical History.",
-            "<INTAKE><NEXT> Section 6. Appointment check: time, prefer phsician."
+            "<BEGIN> Let's start with section 1: Presenting Concerns.",
+            "<NEXT> Next is section 2: Mental Health Hisotry.",
+            "<NEXT> Section 3: Current Symptoms.",
+            "<NEXT> Section 4: Risk Assessment.",
+            "<NEXT> Section 5: Medical History.",
+            "<NEXT> Last, section 6: Appointment check."
         ]
 
-    def chat(self, messages = None):
+    def chat(self, messages = None)-> str:
         if not messages:
             messages=self.messages
         client= openai.OpenAI(api_key=openai.api_key)
         response = client.chat.completions.create(
-            model="gpt-4-turbo",  # or gpt-4-turbo if you want cheaper
+            model="gpt-4-turbo", 
             messages=messages
         )
         reply = response.choices[0].message.content
@@ -59,8 +86,7 @@ class MentalHealthChatAgent:
         elif "<EMERGENCY>" in reply:
             # use RAG to generate emergency handling answer
             self.handle_emergency()
-        elif "<INTAKE>"in reply:
-            if "<NEXT>" in reply or "<BEGIN>" in reply or "<FINISHED>" in reply:
+        elif "<NEXT>" in reply or "<BEGIN>" in reply or "<FINISHED>" in reply:
                 # inject intake section to lead the question to ask
                 reply = self.ask_next_intake_question()
                 # if "<FINISHED>" in reply:
@@ -93,27 +119,61 @@ class MentalHealthChatAgent:
         else:
             return "<FINISH> All intake questions completed."
 
-
     def end_session(self):
-        # save the session, generate final intake form
-        # restart the chat
-        print("[SYSTEM] Submitting intake form...")
-        print(self.intake_form_data)  # Simulate form submission
-        print("[SYSTEM] Session ended. Thank you.")
-    
+        # Prepare messages to generate final intake form
+        messages = [
+            {"role": "system", "content": FORM_SYSTEM_PROMPT},
+            {"role": "user", "content": "Here is the conversation history. Please help me fill the intake form in JSON format based on it:\n\n" + self._format_conversation()},
+        ]
 
+        # Call OpenAI to generate the intake form
+        reply = self.chat(messages)
+        print(f"[DEBUG] Intake form generated: {reply}")
+        print("[SYSTEM] Submitting intake form...")
+
+        # Save the reply to local folder
+        self._save_form(reply)
+
+        print("[SYSTEM] Session ended. Thank you.")
+
+    def _format_conversation(self):
+        """
+        Format conversation messages for feeding into form generation.
+        """
+        formatted = ""
+        for msg in self.messages:
+            if msg["role"] == "user":
+                formatted += f"Patient: {msg['content']}\n"
+            elif msg["role"] == "assistant":
+                formatted += f"Assistant: {msg['content']}\n"
+        return formatted
+
+    def _save_form(self, form_text):
+        """
+        Save the generated form to a local file.
+        """
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        if not os.path.exists("saved_forms"):
+            os.makedirs("saved_forms")
+
+        filename = f"saved_forms/intake_form_{timestamp}.json"
+        try:
+            parsed_json = json.loads(form_text)
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(parsed_json, f, indent=2, ensure_ascii=False)
+            print(f"[SYSTEM] Form saved at {filename}")
+        except Exception as e:
+            print(f"[SYSTEM] Failed to save form as JSON. Raw text will be saved instead. Error: {e}")
+            with open(filename.replace(".json", ".txt"), "w", encoding="utf-8") as f:
+                f.write(form_text)
+            print(f"[SYSTEM] Raw form saved at {filename.replace('.json', '.txt')}")
 
     def get_reply(self, user_input)-> str:
-        # print("Hello! I'm here to support you. Before scheduling an appointment, may I ask you a few questions to better understand your situation?")
-        # while True:
-        # user_input = input("You: ")
+
         self.messages.append({"role": "user", "content": user_input})
         AI_reply = self.chat()
         print(f"[DEBUG] Assistant: {AI_reply}")
         reply=self.parse_reply(AI_reply)
         self.messages.append({"role": "assistant", "content": reply})
-        if "<END>" in reply:
-            self.end_session()
         return reply
-        # print(f"Messages\n\n {self.messages[1:]}")
         
