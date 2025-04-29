@@ -1,0 +1,11 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+langchain_server/venv/
+
+# macOS system file
+.DS_Store
