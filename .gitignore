@@ -39,3 +39,4 @@ secret_keys.txt
 
 # intake output
 /langchain_server/Database
+/langchain_server/test/logs
