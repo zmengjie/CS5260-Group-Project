@@ -3,6 +3,7 @@ import json
 import os
 import time
 from rag_retriever import RAGRetriever
+from riskDetectionAgent import RiskDetectionAgent
 import re
 
 CHAT_SYSTEM_PTOMPT = """
@@ -79,6 +80,7 @@ class MentalHealthChatAgent:
         self.intake_question_index = 0
         self.intake_form_data = {}
         self.intake_section = INTAKE_FORM
+        self.risk_detection_agent = RiskDetectionAgent()
 
     def chat(self, messages = None)-> str:
         if not messages:
@@ -209,6 +211,11 @@ class MentalHealthChatAgent:
         AI_reply = self.chat()
         print(f"[DEBUG] Assistant: {AI_reply}")
         reply=self.parse_reply(AI_reply)
+
+        # Assess User
+        assessment = self.risk_detection_agent.assess(reply)
+        if assessment:
+            self.handle_emergency()
         self.messages.append({"role": "assistant", "content": reply})
         reply = re.sub(r'<[^>]+>', '', reply).strip()
         return reply

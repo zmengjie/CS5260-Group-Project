@@ -10,6 +10,9 @@ SYSTEN_PROMPT = """
                 """
 class RiskDetectionAgent:
     def __init__(self):
+        """
+        The agent assesses the chat history of the user to detect if the user need emergency assistance
+        """
         self.llm = openai.OpenAI(
             api_key=openai.api_key, # input your api key here
             # api_key = "xxx",
@@ -32,6 +35,8 @@ class RiskDetectionAgent:
             model="gpt-4-turbo", 
             messages=self.messages
         )
-        return response.choices[0].message.content
+        # print(response.choices[0].message.content)
+        # return response.choices[0].message.content
+        return response.choices[0].message.content == "CRISIS"
     
 
