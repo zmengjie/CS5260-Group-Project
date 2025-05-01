@@ -4,3 +4,7 @@ langchain
 openai
 python-dotenv
 python-multipart
+PyPDF2
+langchain_chroma
+langchain_openai
+pytesseract
