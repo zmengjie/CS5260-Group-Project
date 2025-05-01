@@ -14,7 +14,10 @@ Luma is an AI-powered mental wellness chatbot that combines a soothing UI with e
 
     cd langchain_server
     pip install -r requirements.txt
+    
     uvicorn main:app --reload --port 8000
+    or /opt/anaconda3/bin/python -m uvicorn main:app --reload --port 8000 to force uvicorn to run under your Anaconda Python
+
 
     > Ensure you have an `.env` file in `langchain_server` with your OpenAI key:
     OPENAI_API_KEY=sk-xxx
