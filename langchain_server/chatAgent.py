@@ -2,7 +2,7 @@ import openai
 import json
 import os
 import time
-from rag_retriever import RAGRetriever
+from rag_retriever import RAGHelper
 from riskDetectionAgent import RiskDetectionAgent
 import re
 
@@ -20,7 +20,8 @@ You must always reply with special tags to guide the system's action:
     - Add <CONTINUE> if keep on the current intake section
     - Add <FINISH> if all intake question completed
 - <END> if the the session is end
-Always embed these tags at in your response, only one tag in each reponse.
+Always embed these tags at in your response. Add one and only one tag in each reponse. 
+DO NOT ask consent and intake question together or mixed any intake section questions.
 The chatting session flow for making appointment with mental health counselling session is:
 - Normal case: Greet → Consent → Intake Form Questions → Confirm → Close → Done.
 - Ask each quseiton one by one, keep you question simple. If needed, ask for follow up detail gently.
@@ -72,7 +73,7 @@ If answer is found, reply with tag <ANSWER> with the answer.
 
 class MentalHealthChatAgent:
     def __init__(self):
-        self.retriever = RAGRetriever()
+        # self.retriever = RAGRetriever()
         self.messages = [
             {"role": "system", "content": CHAT_SYSTEM_PTOMPT},
             {"role": "assistant", "content": CHAT_INIT_MSG}
@@ -81,6 +82,7 @@ class MentalHealthChatAgent:
         self.intake_form_data = {}
         self.intake_section = INTAKE_FORM
         self.risk_detection_agent = RiskDetectionAgent()
+        self.rag_helper = RAGHelper()
 
     def chat(self, messages = None)-> str:
         if not messages:
@@ -101,7 +103,7 @@ class MentalHealthChatAgent:
                 reply= answer
         elif "<EMERGENCY>" in reply:
             # use RAG to generate emergency handling answer
-            self.handle_emergency()
+            reply = self.handle_emergency()
         elif "<NEXT>" in reply or "<BEGIN>" in reply or "<FINISHED>" in reply:
                 # inject intake section to lead the question to ask
                 reply = self.ask_next_intake_question()
@@ -115,16 +117,19 @@ class MentalHealthChatAgent:
     def handle_faq(self) -> str:
         print("[SYSTEM] FAQ detected. Retrieving info from knowledge base...")
         user_query = self.messages[-1]["content"]
-        retrieved = self.retriever.retrieve(user_query)
+        retrieved = self.rag_helper.retrieve(user_query)
         answer=""
+
         if retrieved:
             print("[SYSTEM] Retrieved information:", retrieved)
+
             # Now re-ask LLM to generate an answer with the retrieved context
             messages=[
                 {"role": "system", "content": REACT_SYSTEM_PROMPT},
                 {"role": "user", "content": f"Here is the information {retrieved}"},
                 {"role": "user", "content": f"Here is the question:{user_query}"}
             ]
+            
             answer = self.chat(messages)
             if "<NULL>" in answer:
                 print("[SYSTEM] No relevant information found.")
@@ -139,12 +144,10 @@ class MentalHealthChatAgent:
         return answer
 
 
-    def handle_emergency(self):
+    def handle_emergency(self)-> str:
         print("[SYSTEM] Emergency detected! Providing crisis lifeline...")
-        print("If you are in immediate danger, please call 24/7 Lifeline: 1-800-273-TALK (8255)")
-        print("A real counselor will follow up shortly. Please stay safe.")
-        # TODO: Optionally halt further conversation
-        # considering more solidate way to detect emergency, as it is important and can not make mistakes.
+        reply = "<EMERGENCY> If you are in immediate danger, please call 24/7 Lifeline: 1-800-273-TALK (8255). A real counselor will follow up shortly. Please stay safe."
+        return reply
 
     def ask_next_intake_question(self):
         if self.intake_question_index < len(self.intake_section):
