@@ -2,7 +2,7 @@ import openai
 import json
 import os
 import time
-from rag_retriever import RAGRetriever
+from rag_retriever import RAGHelper
 from riskDetectionAgent import RiskDetectionAgent
 import re
 
@@ -73,7 +73,7 @@ If answer is found, reply with tag <ANSWER> with the answer.
 
 class MentalHealthChatAgent:
     def __init__(self):
-        self.retriever = RAGRetriever()
+        # self.retriever = RAGRetriever()
         self.messages = [
             {"role": "system", "content": CHAT_SYSTEM_PTOMPT},
             {"role": "assistant", "content": CHAT_INIT_MSG}
@@ -82,6 +82,7 @@ class MentalHealthChatAgent:
         self.intake_form_data = {}
         self.intake_section = INTAKE_FORM
         self.risk_detection_agent = RiskDetectionAgent()
+        self.rag_helper = RAGHelper()
 
     def chat(self, messages = None)-> str:
         if not messages:
@@ -116,16 +117,19 @@ class MentalHealthChatAgent:
     def handle_faq(self) -> str:
         print("[SYSTEM] FAQ detected. Retrieving info from knowledge base...")
         user_query = self.messages[-1]["content"]
-        retrieved = self.retriever.retrieve(user_query)
+        retrieved = self.rag_helper.retrieve(user_query)
         answer=""
+
         if retrieved:
             print("[SYSTEM] Retrieved information:", retrieved)
+
             # Now re-ask LLM to generate an answer with the retrieved context
             messages=[
                 {"role": "system", "content": REACT_SYSTEM_PROMPT},
                 {"role": "user", "content": f"Here is the information {retrieved}"},
                 {"role": "user", "content": f"Here is the question:{user_query}"}
             ]
+            
             answer = self.chat(messages)
             if "<NULL>" in answer:
                 print("[SYSTEM] No relevant information found.")
