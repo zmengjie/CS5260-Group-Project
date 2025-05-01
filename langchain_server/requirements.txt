@@ -3,6 +3,7 @@ uvicorn
 langchain
 openai
 python-dotenv
+pytesseract
 langchain_openai
 PyPDF2
 python-multipart

@@ -218,7 +218,7 @@ class MentalHealthChatAgent:
         # Assess User
         assessment = self.risk_detection_agent.assess(reply)
         if assessment:
-            self.handle_emergency()
+            reply = self.handle_emergency()
         self.messages.append({"role": "assistant", "content": reply})
         reply = re.sub(r'<[^>]+>', '', reply).strip()
         return reply
