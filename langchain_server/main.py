@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
@@ -33,6 +33,7 @@ class ChatInput(BaseModel):
 
 agent=MentalHealthChatAgent()
 
+
 @app.post("/chat")
 async def chat(input: ChatInput):
     try:
@@ -43,38 +44,17 @@ async def chat(input: ChatInput):
         print("❌ Error:", e)
         return {"reply": "Sorry, I encountered an error."}
 
-@app.post("/analyze")
-async def analyze_file(file: UploadFile = File(...)):
+
+
+@app.post("/end_session")
+async def end_session(request: Request):
     try:
-        ext = file.filename.split('.')[-1].lower()
-        content = ""
-
-        if ext == 'txt':
-            content = (await file.read()).decode('utf-8')
-
-        elif ext in ['png', 'jpg', 'jpeg']:
-            image = Image.open(io.BytesIO(await file.read()))
-            content = pytesseract.image_to_string(image)
-
-        elif ext == 'pdf':
-            pdf_reader = PdfReader(file.file)
-            content = "\n".join([page.extract_text() or "" for page in pdf_reader.pages])
-
-        else:
-            return {"feedback": f"Unsupported file type: {ext}. Please upload .txt, .png, .jpg, or .pdf"}
-
-        if not content.strip():
-            return {"feedback": "Could not extract any readable content from your file."}
-
-        # Optional: Use LLM to provide feedback
-        result = llm.invoke(f"Please analyze the following psychological test result and give a brief summary: {content}")
-        return {"feedback": result.content}
-
+        body = await request.json()
+        username = body.get('username', 'Unknown')  
+        print(f"Session ended for user: {username}") 
+        return {"reply": agent.end_session()}
     except Exception as e:
-        print("❌ OCR or parsing error:", e)
-        return {"feedback": "Something went wrong during analysis."}
+        print("❌ Error:", e)
+        return {"reply": "Sorry, I encountered an error."}
 
-# Future route placeholder (for Whisper audio transcription)
-@app.post("/whisper-transcribe")
-async def transcribe_audio(file: UploadFile = File(...)):
-    return {"text": "Voice transcription coming soon!"}
+
