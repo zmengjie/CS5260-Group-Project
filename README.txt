@@ -2,7 +2,7 @@
 🌸 Luma – Your Empathetic Companion
 ==================================
 
-Luma is an AI-powered mental wellness chatbot that combines a soothing UI with emotional intelligence features like mood detection, calming themes, guided breathing, psychological document analysis, and more.
+Luma is an AI-powered mental wellness chatbot that combines a soothing UI with emotional intelligence features like mood detection, calming themes, guided breathing and more.
 
 🛠 Setup Instructions
 ---------------------
