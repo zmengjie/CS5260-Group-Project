@@ -13,11 +13,6 @@ Luma is an AI-powered mental wellness chatbot that combines a soothing UI with e
 1. Start the Backend (FastAPI)
 
     cd langchain_server
-    python -m venv venv
-    source venv/bin/activate  # macOS/Linux
-    # OR
-    venv\Scripts\activate     # Windows
-
     pip install -r requirements.txt
     uvicorn main:app --reload --port 8000
 
@@ -42,10 +37,7 @@ Luma is an AI-powered mental wellness chatbot that combines a soothing UI with e
 | 👤 Avatar Support             | Visual avatars for the user and the AI companion ("Luma").                 |
 | 💬 Empathetic Conversations   | Tone-softened replies tuned for emotional support.                         |
 | 🌬 Breathing Guide            | Trigger short mindfulness breathing prompts.                               |
-| 📁 File Upload & OCR          | Upload `.txt`, `.pdf`, `.png`, or `.jpg` for psychological text analysis.  |
 | 📈 Mood Detection             | Luma detects your mood and tracks it through session colors.               |
-| 🏆 Achievements               | Earn badges based on expressing different moods.                           |
-| 🎯 Self-Care Goal Recognition | Luma detects and tracks goals mentioned during conversations.              |
 | 🧠 Onboarding Flow            | Intro animations & user-friendly guided entry screen with Lottie.          |
 | 🌙 Dark Mode                  | Switch to a night-themed calming mode.         
                             
@@ -56,12 +48,12 @@ Luma is an AI-powered mental wellness chatbot that combines a soothing UI with e
 | Route               | Method | Description                                      |
 |--------------------|--------|--------------------------------------------------|
 | `/chat`            | POST   | Send a message to Luma and receive a reply.      |
-| `/analyze`         | POST   | Upload file (text/image/pdf) for analysis.       |
+
 
 
 🤖 Tech Stack
 --------------
 - Frontend: React, Axios, Lottie, CSS
 - Backend: FastAPI, LangChain, OpenAI API
-- OCR & PDF: Tesseract, Pillow, PyPDF2
+
 
