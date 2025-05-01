@@ -102,7 +102,7 @@ class MentalHealthChatAgent:
                 reply= answer
         elif "<EMERGENCY>" in reply:
             # use RAG to generate emergency handling answer
-            self.handle_emergency()
+            reply = self.handle_emergency()
         elif "<NEXT>" in reply or "<BEGIN>" in reply or "<FINISHED>" in reply:
                 # inject intake section to lead the question to ask
                 reply = self.ask_next_intake_question()
@@ -140,12 +140,10 @@ class MentalHealthChatAgent:
         return answer
 
 
-    def handle_emergency(self):
+    def handle_emergency(self)-> str:
         print("[SYSTEM] Emergency detected! Providing crisis lifeline...")
-        print("If you are in immediate danger, please call 24/7 Lifeline: 1-800-273-TALK (8255)")
-        print("A real counselor will follow up shortly. Please stay safe.")
-        # TODO: Optionally halt further conversation
-        # considering more solidate way to detect emergency, as it is important and can not make mistakes.
+        reply = "<EMERGENCY> If you are in immediate danger, please call 24/7 Lifeline: 1-800-273-TALK (8255). A real counselor will follow up shortly. Please stay safe."
+        return reply
 
     def ask_next_intake_question(self):
         if self.intake_question_index < len(self.intake_section):
