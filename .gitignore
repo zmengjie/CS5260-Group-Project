@@ -1,3 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# MacOS system files
+.DS_Store
+
+# Python environment files
+*.egg-info/
+dist/
+build/
+
+# Local environment variables
+.env
+*.env
+
+# OpenAI or API keys if accidentally saved
+openai_key.txt
+secret_keys.txt
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# intake output
+/langchain_server/Database
+/langchain_server/test/logs
+=======
 # Environment
 .env
 

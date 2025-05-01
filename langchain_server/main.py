@@ -8,6 +8,7 @@ import pytesseract
 from PIL import Image
 import io
 from PyPDF2 import PdfReader
+from chatAgent import MentalHealthChatAgent
 
 load_dotenv()
 
@@ -21,20 +22,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-llm = ChatOpenAI(
-    model="gpt-3.5-turbo",
-    temperature=0,
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+# llm = ChatOpenAI(
+#     model="gpt-3.5-turbo",
+#     temperature=0,
+#     api_key=os.getenv("OPENAI_API_KEY")
+# )
 
 class ChatInput(BaseModel):
     message: str
 
+agent=MentalHealthChatAgent()
+
 @app.post("/chat")
 async def chat(input: ChatInput):
     try:
-        response = llm.invoke(input.message)
-        return {"reply": response.content}
+        # response = llm.invoke(input.message)
+        # return {"reply": response.content}
+        return {"reply": agent.get_reply(input.message)}
     except Exception as e:
         print("❌ Error:", e)
         return {"reply": "Sorry, I encountered an error."}
