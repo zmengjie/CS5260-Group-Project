@@ -40,3 +40,15 @@ secret_keys.txt
 # intake output
 /langchain_server/Database
 /langchain_server/test/logs
+=======
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+langchain_server/venv/
+
+# macOS system file
+.DS_Store
